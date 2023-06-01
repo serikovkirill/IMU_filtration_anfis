@@ -3,11 +3,10 @@ t = 0:0.02:10;
 x_0 = sin(t);
 y_0 = cos(t);
 z_0 = t;
-trajectory=[x_0; y_0; z_0]; % массив с тремя координатами
-SNR_dB=55;
-%SNR_dB = randi([50, 100]); % случайное целое число от 50 до 100
+trajectory=[x_0; y_0; z_0]; % массив с тремя координатами   
+SNR_dB = randi([50, 100]); % случайное целое число от 50 до 100
 SNR = 10^(SNR_dB/10);
-noise = sqrt(1/SNR)*randn(size(trajectory)); % 
+noise = sqrt(1/SNR)*randn(size(trajectory));
 noisy_signal = trajectory + noise; %наложение белого шума на траекторию
 %plot3(noisy_signal(1,:), noisy_signal(2,:), noisy_signal(3,:), 'r'); % сигнал с шумом
 %title('Trajectory with applied noise');
@@ -135,6 +134,9 @@ plot(t(1:length(fisOutput_ax)),fisOutput_ax,'b');
 hold on;
 plot(t,ax_won);
 title('a_x Testing');
+legend({'a_x before training','a_x after training', 'a_x ideal'},'Location','southwest');
+xlabel('t');
+ylabel('m/s^2');
 
 fis_ay=readfis('fis_ay.fis');
 fis_ay.input(1).range = [min(dataOutput_acc(:,1)) max(dataOutput_acc(:,1))]; 
@@ -148,6 +150,9 @@ plot(t,ay_won);
 hold on;
 plot(t(1:length(fisOutput_ay)),fisOutput_ay,'b');
 title('a_y Testing');
+legend({'a_y before training','a_y after training', 'a_y ideal'},'Location','southwest')
+xlabel('t');
+ylabel('m/s^2');
 
 fis_az=readfis('fis_az.fis');
 fis_az.input(1).range = [min(dataOutput_acc(:,1)) max(dataOutput_acc(:,1))]; 
@@ -227,6 +232,104 @@ title('w_z Testing');
 data_acc_posttrain=[fisOutput_ax,fisOutput_ay,fisOutput_az];
 data_angular_posttrain=[fisOutput_wx,fisOutput_wy,fisOutput_wz];
 data_posttrain=[data_acc_posttrain,data_angular_posttrain(1:length(data_acc_posttrain),:)];
+
+% Получение PVA
+N = 500; 
+deltat = 0.02; 
+
+acc = dataset_accelerations(1:500,1:3);
+gyr = dataset_angular(:,1:3);
+
+q = zeros(N, 4); 
+q(1,:) = [1 0 0 0]; 
+
+pos = zeros(N, 3); 
+vel = zeros(N, 3); 
+
+Cbn = zeros(3); 
+Cbn(1,1) = 1; Cbn(2,2) = 1; Cbn(3,3) = 1;
+
+
+for i=2:N    
+
+    ang_deltat = gyr(i-1,:)*deltat;
+    ang_axis = ang_deltat;
+    ang_angle = norm(ang_deltat); 
+    dq = [cos(ang_angle/2) sin(ang_angle/2)*ang_axis]; 
+    q(i,:) = quatmultiply(q(i-1,:), dq); 
+
+    
+    Cnb = quat2dcm(q(i,:));
+    Cbn = Cnb';
+    
+    
+    acc_b = acc(i,:); 
+    f_b = Cbn*acc_b'; 
+    f_n = f_b - [0 0 9.78032677]'; 
+
+   
+    vel(i,:) = vel(i-1,:) + f_n'*deltat;  
+    pos(i,:) = pos(i-1,:) + vel(i,:)*deltat; 
+end
+
+ pos_expected = ones(N,3);
+ pos_experimental = pos;
+ pos_diff = pos_experimental-pos_expected;
+ pos_rms = rms(pos_diff);
+
+ vel_expected = ones(N,3);
+ vel_experimental = vel;
+ vel_diff = vel_experimental-vel_expected;
+ vel_rms = rms(vel_diff);
+
+
+N0 = 460; 
+ 
+acc_ml = data_acc_posttrain(1:N0,1:3);
+gyr_ml = data_angular_posttrain(1:N0,1:3);
+
+q0 = zeros(N, 4); 
+q0(1,:) = [1 0 0 0]; 
+
+pos_ml = zeros(N0, 3); 
+vel_ml = zeros(N0, 3); 
+
+Cbn0 = zeros(3); 
+Cbn0(1,1) = 1; Cbn0(2,2) = 1; Cbn0(3,3) = 1;
+
+
+for i=2:N0    
+
+    ang_deltat0 = gyr_ml(i-1,:)*deltat;
+    ang_axis0 = ang_deltat0;
+    ang_angle0 = norm(ang_deltat0); 
+    dq0 = [cos(ang_angle0/2) sin(ang_angle0/2)*ang_axis0]; 
+    q0(i,:) = quatmultiply(q0(i-1,:), dq0); 
+
+    
+    Cnb0 = quat2dcm(q0(i,:));
+    Cbn0 = Cnb0';
+    
+    
+    acc_b0 = acc_ml(i,:); 
+    f_b0 = Cbn0*acc_b0'; 
+    f_n0 = f_b0 - [0 0 9.78032677]'; 
+
+   
+    vel_ml(i,:) = vel_ml(i-1,:) + f_n0'*deltat;  
+    pos_ml(i,:) = pos_ml(i-1,:) + vel_ml(i,:)*deltat; 
+end
+
+ pos_expected_ml = ones(N0,3);
+ pos_experimental_ml = pos_ml;
+ pos_diff_ml = pos_experimental_ml-pos_expected_ml;
+ pos_rms_ml = rms(pos_diff_ml);
+
+ vel_expected_ml = ones(N0,3);
+ vel_experimental_ml = vel_ml;
+ vel_diff_ml = vel_experimental_ml-vel_expected_ml;
+ vel_rms_ml = rms(vel_diff_ml);
+
 
 
 
