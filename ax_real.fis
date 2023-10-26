@@ -1,0 +1,33 @@
+[System]
+Name='ax_real'
+Type='sugeno'
+Version=2.0
+NumInputs=1
+NumOutputs=1
+NumRules=3
+AndMethod='prod'
+OrMethod='probor'
+ImpMethod='prod'
+AggMethod='sum'
+DefuzzMethod='wtaver'
+
+[Input1]
+Name='input1'
+Range=[0 287.109999651702]
+NumMFs=3
+MF1='in1mf1':'trimf',[-143.555000591021 0.245148825198627 143.189838487058]
+MF2='in1mf2':'trimf',[-0.244279516862746 145.296398236608 282.880367180875]
+MF3='in1mf3':'trimf',[135.462533823277 288.833458780117 430.664999477553]
+
+[Output1]
+Name='output'
+Range=[-0.161144387365315 0.160494410003926]
+NumMFs=3
+MF1='out1mf1':'linear',[-0.0168205546120272 0.0312016675502176]
+MF2='out1mf2':'linear',[-0.0162118385162153 2.31686844445673]
+MF3='out1mf3':'linear',[-0.0133444929272178 3.87562875604003]
+
+[Rules]
+1, 1 (1) : 1
+2, 2 (1) : 1
+3, 3 (1) : 1
